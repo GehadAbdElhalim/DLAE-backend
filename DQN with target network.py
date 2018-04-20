@@ -197,9 +197,9 @@ while True :
     while True :
         a = agent.act(State)        #choosing the action
 
-        client.send("take this action".encode('utf-8'))
+        client.send("take this action\n".encode('utf-8'))
         client.send(str(a).encode('utf-8'))
-        client.send("send next state".encode('utf-8'))
+        client.send("send next state\n".encode('utf-8'))
 
         if (str(client.recv(1024),"utf-8").rstrip('\r\n') == "done") :
             done = True
