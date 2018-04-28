@@ -186,20 +186,26 @@ while True :
 
     Client.send("Send the starting State\n".encode('utf-8'))
 
-    for x in State :                                                    #receiving State
-        client.send("send next element \n".encode('utf-8'))
-        data = str(client.recv(1024),"utf-8").rstrip('\r\n')
-        x = Decimal(data)
-        client.send("received".encode('utf-8')+data.encode('utf-8')+"\n".encode('utf-8'))
+    if (str(client.recv(1024),"utf-8").rstrip('\r\n') == "ok") :
+        for x in State :                                                    #receiving State
+            client.send("send next element \n".encode('utf-8'))
+            data = str(client.recv(1024),"utf-8").rstrip('\r\n')
+            x = Decimal(data)
+            client.send("received".encode('utf-8')+data.encode('utf-8')+"\n".encode('utf-8'))
 
-    print("done receiving the first state")
+        print("done receiving the first state")
     
     while True :
         a = agent.act(State)        #choosing the action
 
-        client.send("take this action".encode('utf-8'))
-        client.send(str(a).encode('utf-8'))
-        client.send("send next state".encode('utf-8'))
+        client.send("take this action\n".encode('utf-8'))
+        if (str(client.recv(1024),"utf-8").rstrip('\r\n') == "ok") :
+            client.send(str(a).encode('utf-8'))
+        if (str(client.recv(1024),"utf-8").rstrip('\r\n') == "action done") :
+            client.send("send next state\n".encode('utf-8'))
+        else :
+            print("an error has occured while performing the action")
+            sys.exit()
 
         if (str(client.recv(1024),"utf-8").rstrip('\r\n') == "done") :
             done = True
@@ -210,7 +216,7 @@ while True :
                 y = Decimal(data)
                 client.send("received".encode('utf-8')+data.encode('utf-8')+"\n".encode('utf-8'))
             
-            print("done receiving the first state")
+            print("done receiving the state")
 
         r = Vz cos(theta) - Vz sin(theta) - number_of_collisions            #MUST BE REPLACED WITH THE REWARD FUNCTION
 
