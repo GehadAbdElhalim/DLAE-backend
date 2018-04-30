@@ -182,15 +182,15 @@ while True :
     client,address = s.accept()
     print("client connected")
 
-    Client.send("Hello!\n".encode('utf-8'))
+    client.send("Hello!\n".encode('utf-8'))
 
-    Client.send("Send the starting State\n".encode('utf-8'))
+    client.send("Send the starting State\n".encode('utf-8'))
 
     if (str(client.recv(1024),"utf-8").rstrip('\r\n') == "ok") :
         for x in State :                                                    #receiving State
             client.send("send next element \n".encode('utf-8'))
             data = str(client.recv(1024),"utf-8").rstrip('\r\n')
-            x = Decimal(data)
+            x = float(data)
             client.send("received".encode('utf-8')+data.encode('utf-8')+"\n".encode('utf-8'))
 
         print("done receiving the first state")
@@ -213,12 +213,12 @@ while True :
             for y in State_ :                                               #receiving State_
                 client.send("send next element \n".encode('utf-8'))
                 data = str(client.recv(1024),"utf-8").rstrip('\r\n')
-                y = Decimal(data)
+                y = float(data)
                 client.send("received".encode('utf-8')+data.encode('utf-8')+"\n".encode('utf-8'))
             
             print("done receiving the state")
 
-        r = Vz cos(theta) - Vz sin(theta) - number_of_collisions            #MUST BE REPLACED WITH THE REWARD FUNCTION
+        r = State_[110] * math.cos(math.radians(State_[111])) - State_[110] * math.sin(math.radians(State_[111])) - 5 * State_[114]            #MUST BE REPLACED WITH THE REWARD FUNCTION
 
         if done :
             State_ = None
