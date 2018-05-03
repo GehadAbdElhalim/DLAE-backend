@@ -113,15 +113,15 @@ class Agent:
     def observe(self, sample):  # in (s, a, r, s_) format
         self.memory.add(sample)        
 
-        if self.steps % UPDATE_TARGET_FREQUENCY == 0:
-            self.brain.updateTargetModel()
+        # if self.steps % UPDATE_TARGET_FREQUENCY == 0:
+        #     self.brain.updateTargetModel()
 
-        # debug the Q function in poin S
-        if self.steps % 100 == 0:
-            S = numpy.array([-0.01335408, -0.04600273, -0.00677248, 0.01517507])
-            pred = agent.brain.predictOne(S)
-            print(pred[0])
-            sys.stdout.flush()
+        # # debug the Q function in poin S
+        # if self.steps % 100 == 0:
+        #     S = numpy.array([-0.01335408, -0.04600273, -0.00677248, 0.01517507])
+        #     pred = agent.brain.predictOne(S)
+        #     print(pred[0])
+        #     sys.stdout.flush()
 
         # slowly decrease Epsilon based on our eperience
         self.steps += 1
@@ -166,11 +166,13 @@ s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.bind((host,port)) 
 s.listen(backlog)
 
-StateSize = 113 # we need to reconsider the length of the state
+StateSize = 43 
 ActionSize = 9 
 
-State = [None] * StateSize
-State_ = [None] * StateSize
+tmp_state = [None] *43
+tmp_state_ = [None] *43
+State = [] 
+State_ = []
 a = 0
 r = 0                           # immediate reward
 R = 0                           # total reward
@@ -182,43 +184,63 @@ while True :
     client,address = s.accept()
     print("client connected")
 
-    client.send("Hello!\n".encode('utf-8'))
+    #client.send("Hello!\n".encode('utf-8'))
 
     client.send("Send the starting State\n".encode('utf-8'))
-
-    if (str(client.recv(1024),"utf-8").rstrip('\r\n') == "ok") :
-        for x in State :                                                    #receiving State
-            client.send("send next element \n".encode('utf-8'))
-            data = str(client.recv(1024),"utf-8").rstrip('\r\n')
-            x = float(data)
-            client.send("received".encode('utf-8')+data.encode('utf-8')+"\n".encode('utf-8'))
+    response = str(client.recv(100000),"utf-8").rstrip('\r\n')
+    if (response != "done") :
+        temp = response.split(",")
+        for x in range(0,43):
+            tmp_state[x] = float(temp[x])
+        
+        State = numpy.array(tmp_state)
+        print(State)
+        # print(response)
+        # client.send("send next element\n".encode('utf-8'))
+        # for x in range(0,43) :
+        #     print("how")                                                    #receiving State
+        #     data = str(client.recv(1024),"utf-8").rstrip('\r\n')
+        #     print("1" + data)
+        #     State.append(float(data))
+        #     client.send("send next element\n".encode('utf-8'))
+        #     #client.send("received".encode('utf-8')+data.encode('utf-8')+"\n".encode('utf-8'))
 
         print("done receiving the first state")
     
     while True :
         a = agent.act(State)        #choosing the action
 
-        client.send("take this action\n".encode('utf-8'))
-        if (str(client.recv(1024),"utf-8").rstrip('\r\n') == "ok") :
-            client.send(str(a).encode('utf-8'))
+        client.send("do action ".encode('utf-8')+str(a).encode('utf-8')+"\n".encode('utf-8'))
+        # if (str(client.recv(1024),"utf-8").rstrip('\r\n') == "ok") :
+        #     client.send(str(a).encode('utf-8'))
+        #     print(a)
         if (str(client.recv(1024),"utf-8").rstrip('\r\n') == "action done") :
-            client.send("send next state\n".encode('utf-8'))
+            print("action done")
+            client.send("Send the starting State\n".encode('utf-8'))
         else :
             print("an error has occured while performing the action")
             sys.exit()
 
-        if (str(client.recv(1024),"utf-8").rstrip('\r\n') == "done") :
-            done = True
-        elif (str(client.recv(1024),"utf-8").rstrip('\r\n') == "ok") :   
-            for y in State_ :                                               #receiving State_
-                client.send("send next element \n".encode('utf-8'))
-                data = str(client.recv(1024),"utf-8").rstrip('\r\n')
-                y = float(data)
-                client.send("received".encode('utf-8')+data.encode('utf-8')+"\n".encode('utf-8'))
+        response = str(client.recv(100000),"utf-8").rstrip('\r\n')
+        if (response != "done") :
+            temp = response.split(",")
+            for x in range(0,43):
+                tmp_state_[x] = float(temp[x])
             
-            print("done receiving the state")
+        State_ = numpy.array(tmp_state_)
+        print(State_)
+        # if (str(client.recv(1024),"utf-8").rstrip('\r\n') == "done") :
+        #     done = True
+        # elif (str(client.recv(1024),"utf-8").rstrip('\r\n') == "ok") :   
+        #     for y in State_ :                                               #receiving State_
+        #         client.send("send next element \n".encode('utf-8'))
+        #         data = str(client.recv(1024),"utf-8").rstrip('\r\n')
+        #         y = float(data)
+        #         client.send("received".encode('utf-8')+data.encode('utf-8')+"\n".encode('utf-8'))
+            
+        print("done receiving the state")
 
-        r = State_[110] * math.cos(math.radians(State_[111])) - State_[110] * math.sin(math.radians(State_[111])) - 5 * State_[114]            #MUST BE REPLACED WITH THE REWARD FUNCTION
+        r = State_[38] * math.cos(math.radians(State_[39])) - State_[38] * math.sin(math.radians(State_[39])) - 5 * State_[42]            #MUST BE REPLACED WITH THE REWARD FUNCTION
 
         if done :
             State_ = None
@@ -228,6 +250,8 @@ while True :
         agent.replay()
 
         State = State_
+
+        #State_ = []
 
         R += r
 
