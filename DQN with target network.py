@@ -180,11 +180,12 @@ done = False                    # A flag to signal if the episode is done
 
 agent = Agent(StateSize, ActionSize)
 
-while True :
-    client,address = s.accept()
-    print("client connected")
+client,address = s.accept()
+print("client connected")
 
-    #client.send("Hello!\n".encode('utf-8'))
+while True :
+    #client,address = s.accept()
+    #print("client connected")
 
     client.send("Send the starting State\n".encode('utf-8'))
     response = str(client.recv(100000),"utf-8").rstrip('\r\n')
@@ -214,6 +215,8 @@ while True :
             temp = response.split(",")
             for x in range(0,43):
                 tmp_state_[x] = float(temp[x])
+        else :
+            done = True
             
         State_ = numpy.array(tmp_state_)
         print(State_)    
@@ -239,6 +242,13 @@ while True :
 
     agent.brain.model.save("DLAE-RL-weights.h5")
 
-    client.send("Bye!\n".encode('utf-8'))
-    client.close()
-    break
+    client.send("restart\n".encode('utf-8'))
+
+    if(str(client.recv(1024),"utf-8").rstrip('\r\n') == "oksh") :
+        R = 0
+        done = False
+    else :
+        break
+
+client.send("Bye!\n".encode('utf-8'))
+client.close()
