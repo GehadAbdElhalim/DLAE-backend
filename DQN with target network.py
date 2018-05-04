@@ -195,25 +195,13 @@ while True :
         
         State = numpy.array(tmp_state)
         print(State)
-        # print(response)
-        # client.send("send next element\n".encode('utf-8'))
-        # for x in range(0,43) :
-        #     print("how")                                                    #receiving State
-        #     data = str(client.recv(1024),"utf-8").rstrip('\r\n')
-        #     print("1" + data)
-        #     State.append(float(data))
-        #     client.send("send next element\n".encode('utf-8'))
-        #     #client.send("received".encode('utf-8')+data.encode('utf-8')+"\n".encode('utf-8'))
-
         print("done receiving the first state")
     
     while True :
         a = agent.act(State)        #choosing the action
 
         client.send("do action ".encode('utf-8')+str(a).encode('utf-8')+"\n".encode('utf-8'))
-        # if (str(client.recv(1024),"utf-8").rstrip('\r\n') == "ok") :
-        #     client.send(str(a).encode('utf-8'))
-        #     print(a)
+        
         if (str(client.recv(1024),"utf-8").rstrip('\r\n') == "action done") :
             print("action done")
             client.send("Send the starting State\n".encode('utf-8'))
@@ -228,16 +216,7 @@ while True :
                 tmp_state_[x] = float(temp[x])
             
         State_ = numpy.array(tmp_state_)
-        print(State_)
-        # if (str(client.recv(1024),"utf-8").rstrip('\r\n') == "done") :
-        #     done = True
-        # elif (str(client.recv(1024),"utf-8").rstrip('\r\n') == "ok") :   
-        #     for y in State_ :                                               #receiving State_
-        #         client.send("send next element \n".encode('utf-8'))
-        #         data = str(client.recv(1024),"utf-8").rstrip('\r\n')
-        #         y = float(data)
-        #         client.send("received".encode('utf-8')+data.encode('utf-8')+"\n".encode('utf-8'))
-            
+        print(State_)    
         print("done receiving the state")
 
         r = State_[38] * math.cos(math.radians(State_[39])) - State_[38] * math.sin(math.radians(State_[39])) - 5 * State_[42]            #MUST BE REPLACED WITH THE REWARD FUNCTION
@@ -250,8 +229,6 @@ while True :
         agent.replay()
 
         State = State_
-
-        #State_ = []
 
         R += r
 
