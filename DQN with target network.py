@@ -33,7 +33,7 @@ class Brain:
 
         self.model = self._createModel()
         self.model_ = self._createModel()
-        self.model.load_weights("DLAE-recording-weights.h5") 
+        self.model.load_weights("DLAE-RL-weights.h5") 
 
     def _createModel(self):
         model = Sequential()
