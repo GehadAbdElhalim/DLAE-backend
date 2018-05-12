@@ -1,5 +1,6 @@
 import random, numpy, math, gym, sys
 from keras import backend as K
+from decimal import Decimal
 
 import tensorflow as tf
 
@@ -33,7 +34,7 @@ class Brain:
 
         self.model = self._createModel()
         self.model_ = self._createModel()
-        self.model.load_weights("DLAE-RL-weights.h5") 
+        self.model.load_weights("DLAE-RL-weights-rounded.h5") 
 
     def _createModel(self):
         model = Sequential()
@@ -167,11 +168,15 @@ s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.bind((host,port)) 
 s.listen(backlog)
 
-StateSize = 43 
+StateSize = 45 
 ActionSize = 9 
 
-tmp_state = [None] *43
-tmp_state_ = [None] *43
+number_of_epochs = 0
+time = 0
+distance = 0
+
+tmp_state = [None] *StateSize
+tmp_state_ = [None] *StateSize
 State = [] 
 State_ = []
 a = 0
@@ -192,8 +197,8 @@ while True :
     response = str(client.recv(100000),"utf-8").rstrip('\r\n')
     if (response != "done") :
         temp = response.split(",")
-        for x in range(0,43):
-            tmp_state[x] = float(temp[x])
+        for x in range(0,StateSize):
+            tmp_state[x] = round(float(temp[x]),2)
         
         State = numpy.array(tmp_state)
         #print(State)
@@ -214,19 +219,26 @@ while True :
         response = str(client.recv(100000),"utf-8").rstrip('\r\n')
         if (response != "done") :
             temp = response.split(",")
-            for x in range(0,43):
-                tmp_state_[x] = float(temp[x])
+            for x in range(0,StateSize):
+                tmp_state_[x] = round(float(temp[x]),2)
         else :
             done = True
             
         State_ = numpy.array(tmp_state_)
-        #print(State_)    
+        # print(State_)    
         #print("done receiving the state")
 
-        #r = State_[38] * math.cos(math.radians(State_[39])) - State_[38] * math.sin(math.radians(State_[39])) - 5 * State_[42]            #MUST BE REPLACED WITH THE REWARD FUNCTION
+        r = State_[38] * math.cos(State_[39]) - State_[38] * math.sin(State_[39]) - 5 * State_[43] - 4 * State_[42] - 3 * State_[44] - 0.5 * time
 
-        r = State_[38] * math.cos(math.radians(State_[39])) - 5 * State_[42]
+        for x in range(0,36) :
+            if State_[x] != 0 :
+                r -= 1/State_[x]
 
+        if math.degrees(State_[39]) < 85 and math.degrees(State_[39]) > -85 and State_[38] > 2 :
+            distance += State_[38] * math.cos(State_[39]) * 0.2
+            r += distance
+
+        print("angle is = "+str(math.degrees(State_[39]))+ " distance is = "+ str(distance))
         print("speed is = "+ str(State_[38]) + " ,reward is = " + str(r))
 
         if done :
@@ -235,6 +247,11 @@ while True :
         agent.observe((State,a,r,State_))
 
         agent.replay()
+
+        number_of_epochs += 1
+        print(number_of_epochs)
+
+        time += 0.2
 
         State = State_
 
@@ -245,12 +262,14 @@ while True :
     
     print("total reward : ", R)
 
-    agent.brain.model.save("DLAE-RL-weights.h5")
+    agent.brain.model.save("DLAE-RL-weights-rounded-with-distance.h5")
 
     client.send("restart\n".encode('utf-8'))
 
     if(str(client.recv(1024),"utf-8").rstrip('\r\n') == "oksh") :
         R = 0
+        time = 0
+        distance = 0
         done = False
     else :
         break
