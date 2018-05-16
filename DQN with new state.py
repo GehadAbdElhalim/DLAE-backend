@@ -34,7 +34,8 @@ class Brain:
 
         self.model = self._createModel()
         self.model_ = self._createModel()
-        self.model.load_weights("DLAE-RL-weights-rounded-with-distance.h5") 
+        self.model.load_weights("DLAE-RL-weights-rounded-with-distance.h5")
+        self.model_.load_weights("DLAE-RL-weights-rounded-with-distance.h5") 
 
     def _createModel(self):
         model = Sequential()
