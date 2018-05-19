@@ -236,20 +236,20 @@ while True :
             sign = -1
 
         if (State_[36] > 0) :
-            r = State_[36] * sign * math.cos(math.radians(State_[37])) - State_[36] * sign * abs(math.sin(math.radians(State_[37]))) - 5 * State_[41] - 4 * State_[40] - 3 * State_[42] - 0.5 * time + (State_[38]/State_[36])
+            r = State_[36] * sign * math.cos(math.radians(State_[37]*10)) - State_[36] * sign * abs(math.sin(math.radians(State_[37]*10))) - 5 * State_[41] - 4 * State_[40] - 3 * State_[42] - 0.5 * time + (State_[38]/State_[36])
         else :
-            r = State_[36] * sign * math.cos(math.radians(State_[37])) - State_[36] * sign * abs(math.sin(math.radians(State_[37]))) - 5 * State_[41] - 4 * State_[40] - 3 * State_[42] - 0.5 * time
+            r = State_[36] * sign * math.cos(math.radians(State_[37]*10)) - State_[36] * sign * abs(math.sin(math.radians(State_[37]*10))) - 5 * State_[41] - 4 * State_[40] - 3 * State_[42] - 0.5 * time
 
 
         for x in range(0,36) :
             if State_[x] != 0 :
                 r -= 1/State_[x]
 
-        if math.degrees(State_[37]) < 85 and math.degrees(State_[37]) > -85 and State_[36] > 2 :
-            distance += State_[36] * math.cos(math.radians(State_[37])) * 0.2
+        if State_[37] * 10 < 85 and State_[37] * 10 > -85 and State_[36] > 2 :
+            distance += State_[36] * math.cos(math.radians(State_[37]*10)) * 0.2
             r += distance
 
-        print("angle is = "+str(State_[37])+ " distance is = "+ str(distance) + " direction is = "+str(sign))
+        print("angle is = "+str(State_[37]*10)+ " distance is = "+ str(distance) + " direction is = "+str(sign))
         print("speed is = "+ str(State_[36]) + " ,reward is = " + str(r))
 
         if done :
