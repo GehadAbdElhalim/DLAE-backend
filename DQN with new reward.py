@@ -34,8 +34,8 @@ class Brain:
 
         self.model = self._createModel()
         self.model_ = self._createModel()
-        self.model.load_weights("New_Reward_function.h5")
-        self.model_.load_weights("New_Reward_function.h5") 
+        # self.model.load_weights("New_Reward_function.h5")
+        # self.model_.load_weights("New_Reward_function.h5") 
 
     def _createModel(self):
         model = Sequential()
@@ -235,7 +235,11 @@ while True :
         else:
             sign = -1
 
-        r = State_[36] * sign * math.cos(math.radians(State_[37])) - State_[36] * sign * abs(math.sin(math.radians(State_[37]))) - 5 * State_[41] - 4 * State_[40] - 3 * State_[42] - 0.5 * time + (State_[38]/State_[36])
+        if (State_[36] > 0) :
+            r = State_[36] * sign * math.cos(math.radians(State_[37])) - State_[36] * sign * abs(math.sin(math.radians(State_[37]))) - 5 * State_[41] - 4 * State_[40] - 3 * State_[42] - 0.5 * time + (State_[38]/State_[36])
+        else :
+            r = State_[36] * sign * math.cos(math.radians(State_[37])) - State_[36] * sign * abs(math.sin(math.radians(State_[37]))) - 5 * State_[41] - 4 * State_[40] - 3 * State_[42] - 0.5 * time
+
 
         for x in range(0,36) :
             if State_[x] != 0 :
@@ -245,7 +249,7 @@ while True :
             distance += State_[36] * math.cos(math.radians(State_[37])) * 0.2
             r += distance
 
-        print("angle is = "+str(State_[37])+ " distance is = "+ str(distance))
+        print("angle is = "+str(State_[37])+ " distance is = "+ str(distance) + " direction is = "+str(sign))
         print("speed is = "+ str(State_[36]) + " ,reward is = " + str(r))
 
         if done :
