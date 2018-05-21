@@ -110,7 +110,7 @@ class Agent:
         if random.random() < self.epsilon:
             return random.randint(0, self.ActionSize-1)
         else:
-            print("my action")
+            #print("my action")
             return numpy.argmax(self.brain.predictOne(s))
 
     def observe(self, sample):  # in (s, a, r, s_) format
@@ -169,7 +169,7 @@ s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.bind((host,port)) 
 s.listen(backlog)
 
-StateSize = 44 
+StateSize = 46
 ActionSize = 9 
 
 number_of_epochs = 0
@@ -245,7 +245,7 @@ while True :
             if State_[x] != 0 :
                 r -= 1/State_[x]
 
-        if State_[37] * 10 < 85 and State_[37] * 10 > -85 and State_[36] > 2 :
+        if State_[37] * 10 < 85 and State_[37] * 10 > -85 and State_[36] > 2 and State_[43] == 1 :
             distance += State_[36] * math.cos(math.radians(State_[37]*10)) * 0.2
             r += distance
 
