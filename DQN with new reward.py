@@ -34,8 +34,8 @@ class Brain:
 
         self.model = self._createModel()
         self.model_ = self._createModel()
-        # self.model.load_weights("New_Reward_function.h5")
-        # self.model_.load_weights("New_Reward_function.h5") 
+        self.model.load_weights("New_Reward_function.h5")
+        self.model_.load_weights("New_Reward_function.h5") 
 
     def _createModel(self):
         model = Sequential()
