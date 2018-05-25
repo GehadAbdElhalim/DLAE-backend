@@ -34,8 +34,8 @@ class Brain:
 
         self.model = self._createModel()
         self.model_ = self._createModel()
-        self.model.load_weights("New_Reward_function.h5")
-        self.model_.load_weights("New_Reward_function.h5") 
+        # self.model.load_weights("first_step.h5")
+        # self.model_.load_weights("first_step.h5") 
 
     def _createModel(self):
         model = Sequential()
@@ -262,7 +262,7 @@ while True :
         number_of_epochs += 1
         print(number_of_epochs)
 
-        time += 0.2
+        # time += 0.2
 
         State = State_
 
@@ -273,7 +273,7 @@ while True :
     
     print("total reward : ", R)
 
-    agent.brain.model.save("New_Reward_function.h5")
+    agent.brain.model.save("first_step.h5")
 
     client.send("restart\n".encode('utf-8'))
 
