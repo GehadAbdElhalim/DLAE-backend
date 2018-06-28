@@ -1,16 +1,29 @@
-import random, numpy, math, gym, sys
+# OpenGym Seaquest-v0
+# -------------------
+#
+# This code demonstrates a Double DQN network with Priority Experience Replay
+# in an OpenGym Seaquest-v0 environment.
+#
+# Made as part of blog series Let's make a DQN, available at: 
+# https://jaromiru.com/2016/11/07/lets-make-a-dqn-double-learning-and-prioritized-experience-replay/
+# 
+# author: Jaromir Janisch, 2016
+
+import random, numpy, math, gym, scipy , sys
+from SumTree import SumTree
 from keras import backend as K
 from decimal import Decimal
+import os.path
 
 import tensorflow as tf
 
 
 import socket
-#----------
-HUBER_LOSS_DELTA = 1.0
+
+HUBER_LOSS_DELTA = 2.0
 LEARNING_RATE = 0.00025
 
-#----------
+#-------------------- UTILITIES -----------------------
 def huber_loss(y_true, y_pred):
     err = y_true - y_pred
 
@@ -33,9 +46,13 @@ class Brain:
         self.ActionSize = ActionSize
 
         self.model = self._createModel()
-        self.model_ = self._createModel()
-        self.model.load_weights("first_step.h5")
-        self.model_.load_weights("first_step.h5") 
+        self.model_ = self._createModel()  # target network
+        if(os.path.exists("./DDQN_with_PER_4.h5")):
+            self.model.load_weights("DDQN_with_PER_4.h5")
+            self.model_.load_weights("DDQN_with_PER_4.h5")
+            print("loaded DDQN_with_PER_4.h5 successfully") 
+        else:
+            print("no save file")
 
     def _createModel(self):
         model = Sequential()
@@ -43,13 +60,15 @@ class Brain:
         model.add(Dense(output_dim=600, activation='relu'))
         model.add(Dense(output_dim=ActionSize, activation='linear'))
 
+        model.add(Dense(units=ActionSize, activation='linear'))
+
         opt = RMSprop(lr=LEARNING_RATE)
         model.compile(loss=huber_loss, optimizer=opt)
 
         return model
 
     def train(self, x, y, epochs=1, verbose=0):
-        self.model.fit(x, y, batch_size=64, epochs=epochs, verbose=verbose)
+        self.model.fit(x, y, batch_size=32, epochs=epochs, verbose=verbose)
 
     def predict(self, s, target=False):
         if target:
@@ -64,36 +83,52 @@ class Brain:
         self.model_.set_weights(self.model.get_weights())
 
 #-------------------- MEMORY --------------------------
-class Memory:   # stored as ( s, a, r, s_ )
-    samples = []
+class Memory:   # stored as ( s, a, r, s_ ) in SumTree
+    e = 0.01
+    a = 0.6
 
     def __init__(self, capacity):
-        self.capacity = capacity
+        self.tree = SumTree(capacity)
 
-    def add(self, sample):
-        self.samples.append(sample)        
+    def _getPriority(self, error):
+        return (error + self.e) ** self.a
 
-        if len(self.samples) > self.capacity:
-            self.samples.pop(0)
+    def add(self, error, sample):
+        p = self._getPriority(error)
+        self.tree.add(p, sample) 
 
     def sample(self, n):
-        n = min(n, len(self.samples))
-        return random.sample(self.samples, n)
+        batch = []
+        segment = self.tree.total() / n
 
-    def isFull(self):
-        return len(self.samples) >= self.capacity
+        for i in range(n):
+            a = segment * i
+            b = segment * (i + 1)
+
+            s = random.uniform(a, b)
+            (idx, p, data) = self.tree.get(s)
+            batch.append( (idx, data) )
+
+        return batch
+
+    def update(self, idx, error):
+        p = self._getPriority(error)
+        self.tree.update(idx, p)
 
 #-------------------- AGENT ---------------------------
 MEMORY_CAPACITY = 100000
-BATCH_SIZE = 64
+
+BATCH_SIZE = 32
 
 GAMMA = 0.99
 
 MAX_EPSILON = 1
-MIN_EPSILON = 0.01
-LAMBDA = 0.001      # speed of decay
+MIN_EPSILON = 0.1
 
-UPDATE_TARGET_FREQUENCY = 1000
+EXPLORATION_STOP = 10000   # at this step epsilon will be 0.01
+LAMBDA = - math.log(0.01) / EXPLORATION_STOP  # speed of decay
+
+UPDATE_TARGET_FREQUENCY = 10000
 
 class Agent:
     steps = 0
@@ -114,49 +149,56 @@ class Agent:
             return numpy.argmax(self.brain.predictOne(s))
 
     def observe(self, sample):  # in (s, a, r, s_) format
-        self.memory.add(sample)        
+        x, y, errors = self._getTargets([(0, sample)])
+        self.memory.add(errors[0], sample)
 
-        # if self.steps % UPDATE_TARGET_FREQUENCY == 0:
-        #     self.brain.updateTargetModel()
-
-        # # debug the Q function in poin S
-        # if self.steps % 100 == 0:
-        #     S = numpy.array([-0.01335408, -0.04600273, -0.00677248, 0.01517507])
-        #     pred = agent.brain.predictOne(S)
-        #     print(pred[0])
-        #     sys.stdout.flush()
+        if self.steps % UPDATE_TARGET_FREQUENCY == 0:
+            self.brain.updateTargetModel()
 
         # slowly decrease Epsilon based on our eperience
         self.steps += 1
         self.epsilon = MIN_EPSILON + (MAX_EPSILON - MIN_EPSILON) * math.exp(-LAMBDA * self.steps)
 
-    def replay(self):    
-        batch = self.memory.sample(BATCH_SIZE)
-        batchLen = len(batch)
-
+    def _getTargets(self, batch):
         no_state = numpy.zeros(self.StateSize)
 
-        states = numpy.array([ o[0] for o in batch ])
-        states_ = numpy.array([ (no_state if o[3] is None else o[3]) for o in batch ])
+        states = numpy.array([ o[1][0] for o in batch ])
+        states_ = numpy.array([ (no_state if o[1][3] is None else o[1][3]) for o in batch ])
 
-        p = self.brain.predict(states)
-        p_ = self.brain.predict(states_, target=True)
+        p = agent.brain.predict(states)
 
-        x = numpy.zeros((batchLen, self.StateSize))
-        y = numpy.zeros((batchLen, self.ActionSize))
+        p_ = agent.brain.predict(states_, target=False)
+        pTarget_ = agent.brain.predict(states_, target=True)
+
+        x = numpy.zeros((len(batch), self.StateSize))
+        y = numpy.zeros((len(batch), self.ActionSize))
+        errors = numpy.zeros(len(batch))
         
-        for i in range(batchLen):
-            o = batch[i]
+        for i in range(len(batch)):
+            o = batch[i][1]
             s = o[0]; a = o[1]; r = o[2]; s_ = o[3]
             
             t = p[i]
+            oldVal = t[a]
             if s_ is None:
                 t[a] = r
             else:
-                t[a] = r + GAMMA * numpy.amax(p_[i])
+                t[a] = r + GAMMA * pTarget_[i][ numpy.argmax(p_[i]) ]  # double DQN
 
             x[i] = s
             y[i] = t
+            errors[i] = abs(oldVal - t[a])
+
+        return (x, y, errors)
+
+    def replay(self):    
+        batch = self.memory.sample(BATCH_SIZE)
+        x, y, errors = self._getTargets(batch)
+
+        #update errors
+        for i in range(len(batch)):
+            idx = batch[i][0]
+            self.memory.update(idx, errors[i])
 
         self.brain.train(x, y)
 
@@ -200,7 +242,7 @@ while True :
     if (response != "done") :
         temp = response.split(",")
         for x in range(0,StateSize):
-            tmp_state[x] = round(float(temp[x]),2)
+            tmp_state[x] = round(float(temp[x]),1)
         
         State = numpy.array(tmp_state)
         #print(State)
@@ -222,7 +264,7 @@ while True :
         if (response != "done") :
             temp = response.split(",")
             for x in range(0,StateSize):
-                tmp_state_[x] = round(float(temp[x]),2)
+                tmp_state_[x] = round(float(temp[x]),1)
         else :
             done = True
             
@@ -235,19 +277,26 @@ while True :
         else:
             sign = -1
 
-        if (State_[36] > 0) :
-            r = State_[36] * sign * math.cos(math.radians(State_[37]*10)) - State_[36] * sign * abs(math.sin(math.radians(State_[37]*10))) - 5 * State_[41] - 4 * State_[40] - 3 * State_[42] - 0.5 * time + (State_[38]/State_[36])
+        if (done) :
+            r = -200
         else :
-            r = State_[36] * sign * math.cos(math.radians(State_[37]*10)) - State_[36] * sign * abs(math.sin(math.radians(State_[37]*10))) - 5 * State_[41] - 4 * State_[40] - 3 * State_[42] - 0.5 * time
+            r = sign * (1 - 0.5 * sign * abs(math.sin(math.radians(State_[37]*10))) - 0.05 * State_[42]) * State_[36]
+
+        # r = sign * 3 - sign * abs(math.sin(math.radians(State_[37]*10))) - State_[40] - State_[42] + 0.2 * sign * State_[36]
+
+        # if (State_[36] > 0) :
+        #     r = State_[36] * sign * math.cos(math.radians(State_[37]*10)) - State_[36] * sign * abs(math.sin(math.radians(State_[37]*10)))  - 2 * State_[40] - 1.5 * State_[42]
+        # else :
+        #     r = State_[36] * sign * math.cos(math.radians(State_[37]*10)) - State_[36] * sign * abs(math.sin(math.radians(State_[37]*10)))  - 2 * State_[40] - 1.5 * State_[42] 
 
 
-        for x in range(0,36) :
-            if State_[x] != 0 :
-                r -= 1/State_[x]
+        # for x in range(0,36) :
+        #     if State_[x] != 0 :
+        #         r -= 1/State_[x]
 
-        if State_[37] * 10 < 85 and State_[37] * 10 > -85 and State_[36] > 2 and State_[43] == 1 :
-            distance += State_[36] * math.cos(math.radians(State_[37]*10)) * 0.2
-            r += distance
+        # if State_[37] * 10 < 85 and State_[37] * 10 > -85 and State_[36] > 2 and State_[43] == 1 :
+        #     distance += State_[36] * math.cos(math.radians(State_[37]*10)) * 0.2
+        #     r += distance
 
         print("angle is = "+str(State_[37]*10)+ " distance is = "+ str(distance) + " direction is = "+str(sign))
         print("speed is = "+ str(State_[36]) + " ,reward is = " + str(r))
@@ -268,12 +317,14 @@ while True :
 
         R += r
 
+        r = 0
+
         if done :
             break
     
     print("total reward : ", R)
 
-    agent.brain.model.save("first_step.h5")
+    agent.brain.model.save("DDQN_with_PER_4.h5")
 
     client.send("restart\n".encode('utf-8'))
 

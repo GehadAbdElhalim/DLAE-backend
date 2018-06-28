@@ -8,7 +8,7 @@ import tensorflow as tf
 import socket
 #----------
 HUBER_LOSS_DELTA = 1.0
-LEARNING_RATE = 0.00025
+LEARNING_RATE = 0.001
 
 #----------
 def huber_loss(y_true, y_pred):
@@ -34,8 +34,8 @@ class Brain:
 
         self.model = self._createModel()
         self.model_ = self._createModel()
-        self.model.load_weights("first_step.h5")
-        self.model_.load_weights("first_step.h5") 
+        # self.model.load_weights("first_step_2.h5")
+        # self.model_.load_weights("first_step_2.h5") 
 
     def _createModel(self):
         model = Sequential()
@@ -43,8 +43,8 @@ class Brain:
         model.add(Dense(output_dim=600, activation='relu'))
         model.add(Dense(output_dim=ActionSize, activation='linear'))
 
-        opt = RMSprop(lr=LEARNING_RATE)
-        model.compile(loss=huber_loss, optimizer=opt)
+        adam = Adam(lr=0.001)
+        model.compile(loss="mse", optimizer=adam)
 
         return model
 
@@ -85,7 +85,7 @@ class Memory:   # stored as ( s, a, r, s_ )
 
 #-------------------- AGENT ---------------------------
 MEMORY_CAPACITY = 100000
-BATCH_SIZE = 64
+BATCH_SIZE = 1024
 
 GAMMA = 0.99
 
@@ -116,8 +116,8 @@ class Agent:
     def observe(self, sample):  # in (s, a, r, s_) format
         self.memory.add(sample)        
 
-        # if self.steps % UPDATE_TARGET_FREQUENCY == 0:
-        #     self.brain.updateTargetModel()
+        if self.steps % UPDATE_TARGET_FREQUENCY == 0:
+            self.brain.updateTargetModel()
 
         # # debug the Q function in poin S
         # if self.steps % 100 == 0:
@@ -200,7 +200,7 @@ while True :
     if (response != "done") :
         temp = response.split(",")
         for x in range(0,StateSize):
-            tmp_state[x] = round(float(temp[x]),2)
+            tmp_state[x] = round(float(temp[x]),1)
         
         State = numpy.array(tmp_state)
         #print(State)
@@ -222,7 +222,7 @@ while True :
         if (response != "done") :
             temp = response.split(",")
             for x in range(0,StateSize):
-                tmp_state_[x] = round(float(temp[x]),2)
+                tmp_state_[x] = round(float(temp[x]),1)
         else :
             done = True
             
@@ -235,19 +235,26 @@ while True :
         else:
             sign = -1
 
-        if (State_[36] > 0) :
-            r = State_[36] * sign * math.cos(math.radians(State_[37]*10)) - State_[36] * sign * abs(math.sin(math.radians(State_[37]*10))) - 5 * State_[41] - 4 * State_[40] - 3 * State_[42] - 0.5 * time + (State_[38]/State_[36])
-        else :
-            r = State_[36] * sign * math.cos(math.radians(State_[37]*10)) - State_[36] * sign * abs(math.sin(math.radians(State_[37]*10))) - 5 * State_[41] - 4 * State_[40] - 3 * State_[42] - 0.5 * time
+        if (done) :
+            r = -2
+        elif (State_[36] > 1):
+            r = sign * 1 - sign * abs(math.sin(math.radians(State_[37]*10))) - 0.01 * State_[42] + 0.001 * sign * State_[36]
+
+        # r = sign * 3 - sign * abs(math.sin(math.radians(State_[37]*10))) - State_[40] - State_[42] + 0.2 * sign * State_[36]
+
+        # if (State_[36] > 0) :
+        #     r = State_[36] * sign * math.cos(math.radians(State_[37]*10)) - State_[36] * sign * abs(math.sin(math.radians(State_[37]*10)))  - 2 * State_[40] - 1.5 * State_[42]
+        # else :
+        #     r = State_[36] * sign * math.cos(math.radians(State_[37]*10)) - State_[36] * sign * abs(math.sin(math.radians(State_[37]*10)))  - 2 * State_[40] - 1.5 * State_[42] 
 
 
-        for x in range(0,36) :
-            if State_[x] != 0 :
-                r -= 1/State_[x]
+        # for x in range(0,36) :
+        #     if State_[x] != 0 :
+        #         r -= 1/State_[x]
 
-        if State_[37] * 10 < 85 and State_[37] * 10 > -85 and State_[36] > 2 and State_[43] == 1 :
-            distance += State_[36] * math.cos(math.radians(State_[37]*10)) * 0.2
-            r += distance
+        # if State_[37] * 10 < 85 and State_[37] * 10 > -85 and State_[36] > 2 and State_[43] == 1 :
+        #     distance += State_[36] * math.cos(math.radians(State_[37]*10)) * 0.2
+        #     r += distance
 
         print("angle is = "+str(State_[37]*10)+ " distance is = "+ str(distance) + " direction is = "+str(sign))
         print("speed is = "+ str(State_[36]) + " ,reward is = " + str(r))
@@ -268,12 +275,14 @@ while True :
 
         R += r
 
+        r = 0
+
         if done :
             break
     
     print("total reward : ", R)
 
-    agent.brain.model.save("first_step.h5")
+    agent.brain.model.save("first_step_2.h5")
 
     client.send("restart\n".encode('utf-8'))
 

@@ -8,7 +8,7 @@ from keras.optimizers import *
 from keras.models import Model
 from keras.layers import Input, Dense
 
-StateSize = 43
+StateSize = 46
 ActionSize = 9
 HUBER_LOSS_DELTA = 1.0
 LEARNING_RATE = 0.00025
@@ -96,7 +96,7 @@ training_states = numpy.array(states)
 training_actions = numpy.array(actions)
 
 #training on the recorded sample 
-model.fit(training_states, training_actions, batch_size=64, epochs=20, verbose=2)
+model.fit(training_states, training_actions, batch_size=64, epochs=100000, verbose=2)
 
 
 #saving the weights
