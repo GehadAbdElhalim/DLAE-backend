@@ -49,10 +49,10 @@ class Brain:
 
         self.model = self._createModel()
         self.model_ = self._createModel()  # target network
-        if(os.path.exists("./DDQN_with_new_types.h5")):
-            self.model.load_weights("DDQN_with_new_types.h5")
-            self.model_.load_weights("DDQN_with_new_types.h5")
-            print("loaded DDQN_with_new_types.h5 successfully") 
+        if(os.path.exists("./DDQN_with_new_Reward.h5")):
+            self.model.load_weights("DDQN_with_new_Reward.h5")
+            self.model_.load_weights("DDQN_with_new_Reward.h5")
+            print("loaded DDQN_with_new_Reward successfully") 
         else:
             print("no save file")
 
@@ -124,7 +124,7 @@ BATCH_SIZE = 32
 
 GAMMA = 0.99
 
-MAX_EPSILON = 0.01
+MAX_EPSILON = 0.1
 MIN_EPSILON = 0.01
 
 EXPLORATION_STOP = 10000   # at this step epsilon will be 0.01
@@ -333,8 +333,12 @@ try:
 
             if done :
                 break
+
+        Rewards.append(R)
         
-        print("total reward : ", R)
+        Rewards_plot.append(sum(Rewards)/len(Rewards))
+
+        print("total reward : ", R , "and the averge reward is : ",sum(Rewards)/len(Rewards))
 
         agent.brain.model.save("DDQN_with_new_Reward.h5")
 
@@ -343,7 +347,7 @@ try:
         if(str(client.recv(1024),"utf-8").rstrip('\r\n') == "oksh") :
             Episode_count += 1
             Episodes.append(Episode_count)
-            Rewards.append(R)
+            # Rewards.append(R)
             R = 0
             time = 0
             distance = 0
@@ -351,11 +355,11 @@ try:
         else :
             break
 finally :
-    for j in range(1,len(Rewards)+1) :
-        sum = 0
-        for m in range(0,j) :
-            sum += Rewards[m]
-        Rewards_plot.append(sum/(j+1))
+    # for j in range(1,len(Rewards)+1) :
+    #     sum = 0
+    #     for m in range(0,j) :
+    #         sum += Rewards[m]
+    #     Rewards_plot.append(sum/(j+1))
 
     plt.figure(1)
     plt.plot(Episodes,Rewards_plot,'b')
